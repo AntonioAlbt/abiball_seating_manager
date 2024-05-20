@@ -37,6 +37,8 @@ dependencies:
   cupertino_icons: ^1.0.6
   zoomable_widget: ^0.0.6
   split_view: ^3.2.1
+  provider: ^6.1.2
+  csv: ^6.0.0
 
 dev_dependencies:
   flutter_test:

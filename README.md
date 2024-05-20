@@ -3,6 +3,8 @@
 Ein Programm, was eine Benutzeroberfläche für die Erstellung eines Sitzplanes bereitstellt.
 Kann natürlich für alle möglichen Veranstaltungen genutzt werden.
 
+Builds sind aktuell nur für Linux verfügbar, können aber einfach auch für andere Plattformen erstellt werden: `flutter build <linux|web|windows>`
+
 ## Ziel: Funktionen
 
 - Daten aus CSV-Dateien einlesen (Tische und Gäste)
