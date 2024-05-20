@@ -156,7 +156,6 @@ class _MyHomePageState extends State<MyHomePage> {
     _state.guests = guests;
 
     final seatwishData = const CsvToListConverter().convert(await File("seatwishes.csv").readAsString(), eol: "\n");
-    print(seatwishData);
     final seatwishes = <Seatwish>[];
     for (final sw in seatwishData) {
       if (int.tryParse(sw[0]) == null) continue;
@@ -165,7 +164,6 @@ class _MyHomePageState extends State<MyHomePage> {
     _state.seatwishes = seatwishes;
 
     final tableData = const CsvToListConverter().convert(await File("tables.csv").readAsString(), eol: "\n");
-    print(tableData);
     final tables = <BallTable>[];
     for (final tbl in tableData) {
       if (int.tryParse(tbl[1]) == null) continue;

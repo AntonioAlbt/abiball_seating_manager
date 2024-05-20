@@ -54,37 +54,6 @@ class TableWidget extends StatefulWidget {
   State<TableWidget> createState() => _TableWidgetState();
 }
 
-extension on Guest? {
-  Widget toDraggable() {
-    if (this == null) {
-      return SizedBox.square(
-        dimension: kTextBoxSize + 10,
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Container(
-            decoration: BoxDecoration(border: Border.all()),
-            height: kTextBoxSize,
-            width: kTextBoxSize,
-          ),
-        ),
-      );
-    }
-    final widget = Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Container(
-        decoration: BoxDecoration(border: Border.all()),
-        height: kTextBoxSize,
-        width: kTextBoxSize,
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Text(this!.name),
-        ),
-      ),
-    );
-    return Draggable(feedback: widget, data: this, child: widget);
-  }
-}
-
 class _TableWidgetState extends State<TableWidget> {
   @override
   Widget build(BuildContext context) {
