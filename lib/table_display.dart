@@ -6,9 +6,10 @@ const kScale = 1.0;
 
 const kWidth = 1536 * kScale;
 const kHeight = 2048 * kScale;
-const kTextBoxSize = 40 * kScale;
-const kTableSize = 30 * kScale;
-const kTextPadding = 8 * kScale;
+const kTextBoxSize = 50 * kScale;
+const kTableSize = 35 * kScale;
+const kTextPadding = 4 * kScale;
+const kFontSize = 14 * kScale;
 
 class TableDisplay extends StatefulWidget {
   const TableDisplay({super.key});
@@ -66,31 +67,56 @@ class _TableWidgetState extends State<TableWidget> {
             child: Padding(
               padding: const EdgeInsets.all(kTextPadding),
               child: Container(
-                decoration: BoxDecoration(border: Border.all()),
-                child: (seaters.length <= index) ? null : Text(seaters[index].name),
+                decoration: (seaters.length <= index) ? BoxDecoration(border: Border.all()) : null,
+                child: (seaters.length <= index)
+                    ? null
+                    : Text(
+                        seaters[index].name.replaceAll(" ", "\u00a0"), // 00a0 -> unbreakable space
+                        style: const TextStyle(fontSize: kFontSize, height: 0),
+                        overflow: TextOverflow.visible,
+                        textAlign: TextAlign.center,
+                      ),
               ),
             ),
           );
           if (seaters.length <= index) return widget;
           return Draggable(
-            feedback: widget,
+            feedback: seaters[index].draggableNameFeedback(),
             data: seaters[index],
             child: widget,
           );
         }
         return DragTarget(
           onWillAcceptWithDetails: (details) {
-            if (details.data is Guest) {
-              // TODO: check if table has free spots
+            if (details.data is Guest || details.data is List<Guest>) {
+              // if ((state.tableMap[widget.table]?.length ?? 0) + 1 > widget.table.seats) return false;
               return true;
             }
             return false;
           },
           onAcceptWithDetails: (details) {
-            if (details.data is Guest) {
-              // TODO: put/move guest to table
-              return;
+            for (final data in (details.data is Guest ? [details.data] : details.data is List<Guest> ? (details.data as List<Guest>) : [])) {
+              if (data is Guest) {
+                final current = state.getTableForGuest(data);
+                if (current?.id == widget.table.id) {
+                  state.tableMap[widget.table]!.remove(data);
+                  continue;
+                }
+
+                if ((state.tableMap[widget.table]?.length ?? 0) + 1 > widget.table.seats) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Dieser Tisch ist voll."), duration: Duration(milliseconds: 500)));
+                  break;
+                }
+
+                if (current == null) {
+                  state.tableMap[widget.table] = (state.tableMap[widget.table] ?? [])..add(data);
+                } else {
+                  state.tableMap[current]!.remove(data);
+                  state.tableMap[widget.table] = (state.tableMap[widget.table] ?? [])..add(data);
+                }
+              }
             }
+            state.confirmTableMapUpdate();
             return;
           },
           builder: (context, candidates, rejected) {
@@ -106,21 +132,23 @@ class _TableWidgetState extends State<TableWidget> {
                   ),
                   Row(
                     children: [
-                      toSeatWidget(8),
+                      toSeatWidget(7),
                       ActualTableBlock(
                         widget.table,
                         longBoiii: false,
                         highlight: candidates.isNotEmpty,
                         smallText: true,
+                        badHighlight: (state.tableMap[widget.table]?.length ?? 0) + candidates.length > widget.table.seats,
+                        full: (state.tableMap[widget.table]?.length ?? 0) >= widget.table.seats,
                       ),
                       toSeatWidget(3),
                     ],
                   ),
                   Row(
                     children: [
-                      toSeatWidget(4),
-                      toSeatWidget(5),
                       toSeatWidget(6),
+                      toSeatWidget(5),
+                      toSeatWidget(4),
                     ],
                   ),
                 ],
@@ -136,6 +164,8 @@ class _TableWidgetState extends State<TableWidget> {
                     longBoiii: true,
                     highlight: candidates.isNotEmpty,
                     smallText: false,
+                    badHighlight: (state.tableMap[widget.table]?.length ?? 0) + candidates.length > widget.table.seats,
+                    full: (state.tableMap[widget.table]?.length ?? 0) >= widget.table.seats,
                   ),
                   Row(
                     children: List.generate(widget.table.seats - 6, (i) => toSeatWidget(i + 6)),
@@ -153,6 +183,8 @@ class _TableWidgetState extends State<TableWidget> {
                     longBoiii: true,
                     highlight: candidates.isNotEmpty,
                     smallText: false,
+                    badHighlight: (state.tableMap[widget.table]?.length ?? 0) + candidates.length > widget.table.seats,
+                    full: (state.tableMap[widget.table]?.length ?? 0) >= widget.table.seats,
                   ),
                   Column(
                     children: List.generate(widget.table.seats - 6, (i) => toSeatWidget(i + 6)),
@@ -180,6 +212,8 @@ class ActualTableBlock extends StatelessWidget {
       required this.longBoiii,
       required this.highlight,
       required this.smallText,
+      required this.badHighlight,
+      required this.full,
     }
   );
 
@@ -187,6 +221,8 @@ class ActualTableBlock extends StatelessWidget {
   final bool longBoiii;
   final bool highlight;
   final bool smallText;
+  final bool badHighlight;
+  final bool full;
 
   @override
   Widget build(BuildContext context) {
@@ -200,12 +236,16 @@ class ActualTableBlock extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               border: Border.all(
-                color: !highlight ? Colors.blue.shade800 : Colors.green,
+                color: badHighlight ? Colors.red : highlight ? Colors.green : full ? Colors.blueGrey.shade800 : Colors.blue.shade800,
                 width: 3,
               ),
-              color: !highlight
-                  ? Colors.blue.shade800.withOpacity(.25)
-                  : Colors.green.withOpacity(.5),
+              color: badHighlight
+                  ? Colors.red.withOpacity(.5)
+                  : highlight
+                  ? Colors.green.withOpacity(.5)
+                  : full
+                  ? Colors.blueGrey.shade800.withOpacity(.4)
+                  : Colors.blue.shade800.withOpacity(.25),
             ),
             child: Center(
               child: Text(

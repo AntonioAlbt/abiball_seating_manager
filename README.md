@@ -5,8 +5,8 @@ Kann natürlich für alle möglichen Veranstaltungen genutzt werden.
 
 Builds sind aktuell nur für Linux verfügbar, können aber einfach auch für andere Plattformen erstellt werden: `flutter build <linux|web|windows>`
 
-## Ziel: Funktionen
+## Funktionen
 
-- Daten aus CSV-Dateien einlesen (Tische und Gäste)
+- Daten aus CSV-Dateien einlesen (Tische, Gäste und Sitzwünsche)
 - Gäste bzw. Gruppen per Drag-and-Drop an Tische platzieren
-- Bild vom Sitzplan automatisch erstellen
+- Gäste in Liste filtern und durchsuchen

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:abiball_seating_manager/data.dart';
@@ -40,6 +41,9 @@ class _MyHomePageState extends State<MyHomePage> {
   late SplitViewController _splitController;
   bool _loading = false;
   late AppState _state;
+  bool _onlyGroupsWithUnplaced = false;
+  bool _sortBySize = false;
+  String _search = "";
 
   @override
   Widget build(BuildContext context) {
@@ -61,81 +65,85 @@ class _MyHomePageState extends State<MyHomePage> {
               minScale: .1,
               maxScale: 3,
               child: const TableDisplay(),
-              // child: SizedBox(
-              //   width: 2500,
-              //   height: 2500,
-              //   child: Stack(
-              //     children: <Widget>[
-              //       Positioned(
-              //         left: 100,
-              //         top: 50,
-              //         child: Container(
-              //           color: Colors.amber,
-              //           width: 1222,
-              //           height: 800,
-              //         ),
-              //       ),
-              //       DragTarget(
-              //         builder: (context, candidateData, rejectedData) {
-              //           return Container(
-              //             width: 100,
-              //             height: 100,
-              //             color: Colors.grey,
-              //             child: Text(candidateData.join(", ")),
-              //           );
-              //         },
-              //         onWillAcceptWithDetails: (details) {
-              //           // TODO: check if guest can sit at this table
-              //           return true;
-              //         },
-              //         onAcceptWithDetails: (details) {
-              //         },
-              //       ),
-              //     ],
-              //   ),
-              // ),
             ),
-            Container(
-              height: double.infinity,
-              width: double.infinity,
-              color: Theme.of(context).scaffoldBackgroundColor,
-              child: ListView(
-                children: groupGuests(_state.guests).map((group) {
-                  final swish = _state.seatwishes.where((w) => w.uid == group.first.id).toList().firstOrNull;
-                  return ListTile(
-                    title: Text("Gruppe von ${group.first.name}"),
-                    subtitle: Card(
-                      child: Column(
-                        children: [
-                          if (swish != null)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                              child: Text(
-                                "Sitzwunsch: mit ${swish.seatWishes.join(", ").replaceAll(group.length > 1 ? group.skip(1).map((g) => g.name).join(", ") : "dhwuduh3w8", "Gästen")}",
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          if ((swish?.note ?? "").trim() != "") Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                            child: Text("Notiz: ${swish?.note}", textAlign: TextAlign.center),
-                          ),
-                          ...group.map(
-                            (guest) => (){
-                              final widget = Card.outlined(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 6),
-                                  child: Text(guest.name),
-                                ),
-                              );
-                              return Draggable(feedback: widget, data: guest, child: widget);
-                            }(),
-                          ),
-                        ],
+            Consumer<AppState>(
+              builder: (context, state, _) {
+                return Container(
+                  height: double.infinity,
+                  width: double.infinity,
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  child: ListView(
+                    children: [
+                      const ListTile(
+                        title: Text("Verwendungsinfo"),
+                        subtitle: Text("Aktionen:\n- Zoomen: Linksklick + Scrollen\n- Hinzufügen/Verschieben: Person auf Tisch verschieben\n- Zum Entfernen, Person auf aktuellen Tisch verschieben.\n- Gruppeneintrag anfassen, um Personengruppe zu verwenden."),
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
+                      CheckboxListTile(
+                        title: const Text("Nach Gruppengröße sortieren"),
+                        value: _sortBySize,
+                        onChanged: (newVal) => setState(() => _sortBySize = newVal!),
+                      ),
+                      CheckboxListTile(
+                        title: const Text("Nur Gruppen mit Personen ohne Tisch anzeigen"),
+                        value: _onlyGroupsWithUnplaced,
+                        onChanged: (newVal) => setState(() => _onlyGroupsWithUnplaced = newVal!),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: TextField(
+                          onChanged: (newVal) => setState(() => _search = newVal),
+                          decoration: const InputDecoration(hintText: "Suche nach Namen"),
+                        ),
+                      ),
+                    ] + (groupGuests(state.guests)..sort((a, b) => _sortBySize ? b.length.compareTo(a.length) : a.first.name.compareTo(b.first.name)))
+                    .where((gr) => _onlyGroupsWithUnplaced ? gr.any((g) => state.getTableForGuest(g) == null) : true)
+                    .where((gr) => _search != "" ? gr.map((g) => g.name).join(", ").toLowerCase().contains(_search.toLowerCase()) : true)
+                    .map((group) {
+                      final swish = state.seatwishes.where((w) => w.uid == group.first.id).toList().firstOrNull;
+                      return ListTile(
+                        title: Text("Gruppe von ${group.first.name}"),
+                        subtitle: Draggable(
+                          feedback: Column(
+                            children: group.map((g) => g.draggableNameFeedback()).toList(),
+                          ),
+                          data: group,
+                          child: Card(
+                            child: Column(
+                              children: [
+                                if (swish != null)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                                    child: Text(
+                                      "Sitzwunsch: mit ${swish.seatWishes.join(", ").replaceAll(group.length > 1 ? group.skip(1).map((g) => g.name).join(", ") : "dhwuduh3w8", "Gästen")}",
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                if ((swish?.note ?? "").trim() != "") Padding(
+                                  padding: const EdgeInsets.only(left: 2, right: 2, bottom: 4),
+                                  child: Text("Notiz: ${swish?.note}", textAlign: TextAlign.center),
+                                ),
+                                ...group.map(
+                                  (guest) => (){
+                                    final current = state.getTableForGuest(guest);
+                                    final widget = Card.outlined(
+                                      color: current != null ? Colors.blueGrey.shade200 : Colors.redAccent.shade100.withOpacity(.2),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 6),
+                                        child: Text("${guest.name}${current != null ? " - Tisch ${current.id}" : ""}"),
+                                      ),
+                                    );
+                                    return Draggable(feedback: guest.draggableNameFeedback(), data: guest, child: widget);
+                                  }(),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                );
+              }
             ),
           ],
         ),
@@ -194,6 +202,11 @@ class _MyHomePageState extends State<MyHomePage> {
       );
     }
     _state.tables = tables;
+
+    final tblMapFile = File("table_map.json");
+    if (await tblMapFile.exists()) {
+      _state.loadTableMapFromSimpleForm((jsonDecode(await tblMapFile.readAsString()) as Map<dynamic, dynamic>).cast<String, List<dynamic>>().map((e1, e2) => MapEntry(e1, e2.cast<int>())));
+    }
 
     setState(() {
       _loading = false;

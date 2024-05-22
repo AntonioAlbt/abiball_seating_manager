@@ -44,3 +44,4 @@ app.*.map.json
 
 # data files
 *.csv
+table_map.json

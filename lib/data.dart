@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 class Guest {
@@ -6,6 +9,15 @@ class Guest {
   final int? registrator;
 
   const Guest({required this.id, required this.name, required this.registrator});
+
+  Widget draggableNameFeedback() {
+    return Card.outlined(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Text(name),
+      ),
+    );
+  }
 }
 
 class Seatwish {
@@ -29,13 +41,11 @@ class BallTable {
 class AppState extends ChangeNotifier {
   final Map<BallTable, List<Guest>> tableMap = {};
   List<Guest> guests = [];
-  List<BallTable> tables = [
-    const BallTable(id: "2.1", seats: 8, position: Offset(.1, .1), rotated: false),
-    const BallTable(id: "2.2", seats: 8, position: Offset(.1, .01), rotated: false),
-  ];
+  List<BallTable> tables = [];
   List<Seatwish> seatwishes = [];
 
-  void notifyTableMapUpdate() {
+  Future<void> confirmTableMapUpdate() async {
+    await File("table_map.json").writeAsString(jsonEncode(simplifyTableMap()));
     notifyListeners();
   }
 
@@ -51,6 +61,19 @@ class AppState extends ChangeNotifier {
 
   void updateSeatwishList(List<Seatwish> swList) {
     seatwishes = swList;
+    notifyListeners();
+  }
+
+  BallTable? getTableForGuest(Guest guest) {
+    return tableMap.entries.where((entry) => entry.value.contains(guest)).firstOrNull?.key;
+  }
+
+  Map<String, List<int>> simplifyTableMap() {
+    return tableMap.map((entry, guests) => MapEntry(entry.id, guests.map((g) => g.id).toList()));
+  }
+
+  void loadTableMapFromSimpleForm(Map<String, List<int>> simpleMap) {
+    simpleMap.forEach((tid, gids) => tableMap[tables.where((t) => t.id == tid).first] = gids.map((id) => guests.firstWhere((g) => g.id == id)).toList());
     notifyListeners();
   }
 }
