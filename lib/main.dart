@@ -100,24 +100,41 @@ class _MyHomePageState extends State<MyHomePage> {
               width: double.infinity,
               color: Theme.of(context).scaffoldBackgroundColor,
               child: ListView(
-                children: groupGuests(_state.guests).map((group) => ListTile(
-                  title: Text("Gruppe von ${group.first.name}"),
-                  subtitle: Card(
-                    child: Column(
-                      children: group.map(
-                          (guest) => (){
-                            final widget = Card.outlined(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 6),
-                                child: Text(guest.name),
+                children: groupGuests(_state.guests).map((group) {
+                  final swish = _state.seatwishes.where((w) => w.uid == group.first.id).toList().firstOrNull;
+                  return ListTile(
+                    title: Text("Gruppe von ${group.first.name}"),
+                    subtitle: Card(
+                      child: Column(
+                        children: [
+                          if (swish != null)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                              child: Text(
+                                "Sitzwunsch: mit ${swish.seatWishes.join(", ").replaceAll(group.length > 1 ? group.skip(1).map((g) => g.name).join(", ") : "dhwuduh3w8", "Gästen")}",
+                                textAlign: TextAlign.center,
                               ),
-                            );
-                            return Draggable(feedback: widget, data: guest, child: widget);
-                          }(),
-                        ).toList(),
+                            ),
+                          if ((swish?.note ?? "").trim() != "") Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                            child: Text("Notiz: ${swish?.note}", textAlign: TextAlign.center),
+                          ),
+                          ...group.map(
+                            (guest) => (){
+                              final widget = Card.outlined(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 6),
+                                  child: Text(guest.name),
+                                ),
+                              );
+                              return Draggable(feedback: widget, data: guest, child: widget);
+                            }(),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                )).toList(),
+                  );
+                }).toList(),
               ),
             ),
           ],
@@ -167,7 +184,14 @@ class _MyHomePageState extends State<MyHomePage> {
     final tables = <BallTable>[];
     for (final tbl in tableData) {
       if (int.tryParse(tbl[1]) == null) continue;
-      tables.add(BallTable(id: tbl[0], seats: int.parse(tbl[1]), position: Offset(double.parse(tbl[2]), double.parse(tbl[3]))));
+      tables.add(
+        BallTable(
+          id: tbl[0],
+          seats: int.parse(tbl[1]),
+          position: Offset(double.parse(tbl[2]), double.parse(tbl[3])),
+          rotated: tbl[4].trim() != "" && tbl[4].trim().toLowerCase() != "false"
+        ),
+      );
     }
     _state.tables = tables;
 

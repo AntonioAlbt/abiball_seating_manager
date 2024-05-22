@@ -21,16 +21,17 @@ class BallTable {
   final int seats;
   /// x and y between 0 and 1, scaled by multiplying with width and height
   final Offset position;
+  final bool rotated;
 
-  const BallTable({required this.id, required this.seats, required this.position});
+  const BallTable({required this.id, required this.seats, required this.position, required this.rotated});
 }
 
 class AppState extends ChangeNotifier {
   final Map<BallTable, List<Guest>> tableMap = {};
   List<Guest> guests = [];
   List<BallTable> tables = [
-    const BallTable(id: "2.1", seats: 8, position: Offset(.1, .1)),
-    const BallTable(id: "2.2", seats: 8, position: Offset(.1, .01)),
+    const BallTable(id: "2.1", seats: 8, position: Offset(.1, .1), rotated: false),
+    const BallTable(id: "2.2", seats: 8, position: Offset(.1, .01), rotated: false),
   ];
   List<Seatwish> seatwishes = [];
 
