@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 
 class Guest {
@@ -32,10 +33,13 @@ class BallTable {
   final String id;
   final int seats;
   /// x and y between 0 and 1, scaled by multiplying with width and height
-  final Offset position;
+  Offset position;
+  late Offset stablePosition;
   final bool rotated;
 
-  const BallTable({required this.id, required this.seats, required this.position, required this.rotated});
+  BallTable({required this.id, required this.seats, required this.position, required this.rotated}) {
+    stablePosition = position;
+  }
 }
 
 class AppState extends ChangeNotifier {
@@ -43,6 +47,7 @@ class AppState extends ChangeNotifier {
   List<Guest> guests = [];
   List<BallTable> tables = [];
   List<Seatwish> seatwishes = [];
+  bool tablesMovable = false;
 
   Future<void> confirmTableMapUpdate() async {
     await File("table_map.json").writeAsString(jsonEncode(simplifyTableMap()));
@@ -64,6 +69,15 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void notifyDataChange() {
+    notifyListeners();
+  }
+
+  void updateTablesMovable(bool val) {
+    tablesMovable = val;
+    notifyListeners();
+  }
+
   BallTable? getTableForGuest(Guest guest) {
     return tableMap.entries.where((entry) => entry.value.contains(guest)).firstOrNull?.key;
   }
@@ -75,5 +89,11 @@ class AppState extends ChangeNotifier {
   void loadTableMapFromSimpleForm(Map<String, List<int>> simpleMap) {
     simpleMap.forEach((tid, gids) => tableMap[tables.where((t) => t.id == tid).first] = gids.map((id) => guests.firstWhere((g) => g.id == id)).toList());
     notifyListeners();
+  }
+
+  Future<void> saveUpdatedTables() async {
+    await File("updated-tables.csv").writeAsString(const ListToCsvConverter(delimitAllFields: true, eol: "\n").convert(
+      [["tid", "seats", "posx", "posy", "rotated"]] + tables.map((tbl) => [tbl.id, tbl.seats.toString(), tbl.position.dx.toString(), tbl.position.dy.toString(), tbl.rotated ? "true" : ""]).toList(),
+    ));
   }
 }

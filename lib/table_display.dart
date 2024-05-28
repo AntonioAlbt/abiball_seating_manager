@@ -1,11 +1,12 @@
 import 'package:abiball_seating_manager/data.dart';
+import 'package:abiball_seating_manager/main.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 const kScale = 1.0;
 
-const kWidth = 1536 * kScale;
-const kHeight = 2048 * kScale;
+const kWidth = 1800 * kScale;
+const kHeight = 2500 * kScale;
 const kTextBoxSize = 50 * kScale;
 const kTableSize = 35 * kScale;
 const kTextPadding = 4 * kScale;
@@ -23,23 +24,49 @@ class _TableDisplayState extends State<TableDisplay> {
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, state, _) {
-        return SizedBox(
-          width: kWidth,
-          height: kHeight,
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.black, width: 3)
-            ),
-            child: Stack(
-              children: [
-                ...state.tables.map((table) => Positioned(
-                  left: table.position.dx * kWidth,
-                  top: table.position.dy * kHeight,
-                  child: TableWidget(table),
-                )),
-              ],
-            ),
-          ),
+        return DragTarget(
+          onMove: (details) {
+            if (!state.tablesMovable) return;
+            final data = details.data;
+            if (data is BallTable) {
+              final zoom = homePageKey.currentState!.zoomableController.value[0];
+              final originalPos = (context.findRenderObject() as RenderBox).localToGlobal(Offset(data.stablePosition.dx * kWidth, data.stablePosition.dy * kHeight));
+              // final pos = (context.findRenderObject() as RenderBox).globalToLocal(details.offset);
+              final pos = details.offset;
+              final diff = pos - originalPos - Offset(0, kTextBoxSize * zoom);
+              final scaled = Offset(diff.dx / kWidth, diff.dy / kHeight);
+              final zoomed = scaled / zoom;
+              data.position = data.stablePosition + zoomed;
+              state.notifyDataChange();
+            }
+          },
+          onAcceptWithDetails: (details) {
+            final data = details.data;
+            if (data is BallTable) {
+              data.stablePosition = data.position;
+              state.saveUpdatedTables();
+            }
+          },
+          builder: (context, _, __) {
+            return SizedBox(
+              width: kWidth,
+              height: kHeight,
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black, width: 3)
+                ),
+                child: Stack(
+                  children: [
+                    ...state.tables.map((table) => Positioned(
+                      left: table.position.dx * kWidth,
+                      top: table.position.dy * kHeight,
+                      child: TableWidget(table),
+                    )),
+                  ],
+                ),
+              ),
+            );
+          }
         );
       },
     );
@@ -135,7 +162,6 @@ class _TableWidgetState extends State<TableWidget> {
                       toSeatWidget(7),
                       ActualTableBlock(
                         widget.table,
-                        longBoiii: false,
                         highlight: candidates.isNotEmpty,
                         smallText: true,
                         badHighlight: (state.tableMap[widget.table]?.length ?? 0) + candidates.length > widget.table.seats,
@@ -153,41 +179,39 @@ class _TableWidgetState extends State<TableWidget> {
                   ),
                 ],
               );
-            } else if (widget.table.seats <= 12 && !widget.table.rotated) {
+            } else if (!widget.table.rotated) {
               return Column(
                 children: [
                   Row(
-                    children: List.generate(6, (i) => toSeatWidget(i)),
+                    children: List.generate((widget.table.seats / 2).ceil(), (i) => toSeatWidget(i)),
                   ),
                   ActualTableBlock(
                     widget.table,
-                    longBoiii: true,
                     highlight: candidates.isNotEmpty,
                     smallText: false,
                     badHighlight: (state.tableMap[widget.table]?.length ?? 0) + candidates.length > widget.table.seats,
                     full: (state.tableMap[widget.table]?.length ?? 0) >= widget.table.seats,
                   ),
                   Row(
-                    children: List.generate(widget.table.seats - 6, (i) => toSeatWidget(i + 6)),
+                    children: List.generate((widget.table.seats / 2).floor(), (i) => toSeatWidget(i + (widget.table.seats / 2).ceil())),
                   ),
                 ],
               );
-            } else if (widget.table.seats <= 12 && widget.table.rotated) {
+            } else if (widget.table.rotated) {
               return Row(
                 children: [
                   Column(
-                    children: List.generate(6, (i) => toSeatWidget(i)),
+                    children: List.generate((widget.table.seats / 2).ceil(), (i) => toSeatWidget(i)),
                   ),
                   ActualTableBlock(
                     widget.table,
-                    longBoiii: true,
                     highlight: candidates.isNotEmpty,
                     smallText: false,
                     badHighlight: (state.tableMap[widget.table]?.length ?? 0) + candidates.length > widget.table.seats,
                     full: (state.tableMap[widget.table]?.length ?? 0) >= widget.table.seats,
                   ),
                   Column(
-                    children: List.generate(widget.table.seats - 6, (i) => toSeatWidget(i + 6)),
+                    children: List.generate((widget.table.seats / 2).floor(), (i) => toSeatWidget(i + (widget.table.seats / 2).ceil())),
                   ),
                 ],
               );
@@ -209,7 +233,6 @@ class ActualTableBlock extends StatelessWidget {
     this.table,
     {
       super.key,
-      required this.longBoiii,
       required this.highlight,
       required this.smallText,
       required this.badHighlight,
@@ -218,7 +241,6 @@ class ActualTableBlock extends StatelessWidget {
   );
 
   final BallTable table;
-  final bool longBoiii;
   final bool highlight;
   final bool smallText;
   final bool badHighlight;
@@ -226,13 +248,14 @@ class ActualTableBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: kTextBoxSize * (longBoiii && !table.rotated ? 6 : 1),
-      height: kTextBoxSize * (longBoiii && table.rotated ? 6 : 1),
+    final halfSeats = (table.seats == 8) ? 1 : (table.seats / 2).round();
+    final widget = SizedBox(
+      width: kTextBoxSize * (!table.rotated ? halfSeats : 1),
+      height: kTextBoxSize * (table.rotated ? halfSeats : 1),
       child: Center(
         child: SizedBox(
-          width: (longBoiii && !table.rotated ? (kTextBoxSize * 6) : kTableSize),
-          height: (longBoiii && table.rotated ? (kTextBoxSize * 6) : kTableSize),
+          width: (!table.rotated ? (kTextBoxSize * halfSeats) : kTableSize),
+          height: (table.rotated ? (kTextBoxSize * halfSeats) : kTableSize),
           child: Container(
             decoration: BoxDecoration(
               border: Border.all(
@@ -258,6 +281,24 @@ class ActualTableBlock extends StatelessWidget {
           ),
         ),
       ),
+    );
+    if (!Provider.of<AppState>(context).tablesMovable) return widget;
+    return Draggable(
+      feedback: Transform.scale(
+        scale: homePageKey.currentState!.zoomableController.value[0],
+        child: Card(
+          elevation: 0,
+          color: Colors.transparent,
+          child: widget,
+        ),
+      ),
+      data: table,
+      dragAnchorStrategy: (_, context, ___) => (context.findRenderObject()! as RenderBox).size.center(Offset.zero),
+      childWhenDragging: SizedBox(
+        width: kTextBoxSize * (!table.rotated ? halfSeats : 1),
+        height: kTextBoxSize * (table.rotated ? halfSeats : 1),
+      ),
+      child: widget,
     );
   }
 }

@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:abiball_seating_manager/data.dart';
 import 'package:abiball_seating_manager/table_display.dart';
 import 'package:csv/csv.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide TransformationController;
 import 'package:provider/provider.dart';
 import 'package:split_view/split_view.dart';
 import 'package:zoomable_widget/zoomable_widget.dart';
@@ -24,26 +24,29 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Abiball-Sitzplan-Verwalter'),
+      home: MyHomePage(title: 'Abiball-Sitzplan-Verwalter'),
     );
   }
 }
 
+final homePageKey = GlobalKey<MyHomePageState>();
+
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  MyHomePage({required this.title}) : super(key: homePageKey);
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MyHomePage> createState() => MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class MyHomePageState extends State<MyHomePage> {
   late SplitViewController _splitController;
   bool _loading = false;
   late AppState _state;
   bool _onlyGroupsWithUnplaced = false;
   bool _sortBySize = false;
   String _search = "";
+  late TransformationController zoomableController;
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +67,7 @@ class _MyHomePageState extends State<MyHomePage> {
               constrained: false,
               minScale: .1,
               maxScale: 3,
+              transformationController: zoomableController,
               child: const TableDisplay(),
             ),
             Consumer<AppState>(
@@ -77,6 +81,12 @@ class _MyHomePageState extends State<MyHomePage> {
                       const ListTile(
                         title: Text("Verwendungsinfo"),
                         subtitle: Text("Aktionen:\n- Zoomen: Linksklick + Scrollen\n- Hinzufügen/Verschieben: Person auf Tisch verschieben\n- Zum Entfernen, Person auf aktuellen Tisch verschieben.\n- Gruppeneintrag anfassen, um Personengruppe zu verwenden."),
+                      ),
+                      CheckboxListTile(
+                        title: const Text("Tische verschiebbar machen"),
+                        subtitle: const Text("sieht nicht gut aus, aber funktioniert"),
+                        value: state.tablesMovable,
+                        onChanged: (newVal) => state.updateTablesMovable(newVal!),
                       ),
                       CheckboxListTile(
                         title: const Text("Nach Gruppengröße sortieren"),
@@ -156,6 +166,8 @@ class _MyHomePageState extends State<MyHomePage> {
     _splitController = SplitViewController(weights: [.75, .25]);
     super.initState();
 
+    zoomableController = TransformationController();
+
     _state = AppState();
     _loadData();
   }
@@ -188,7 +200,8 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     _state.seatwishes = seatwishes;
 
-    final tableData = const CsvToListConverter().convert(await File("tables.csv").readAsString(), eol: "\n");
+    bool updateExists = await File("updated-tables.csv").exists();
+    final tableData = const CsvToListConverter().convert(await File(updateExists ? "updated-tables.csv" : "tables.csv").readAsString(), eol: "\n");
     final tables = <BallTable>[];
     for (final tbl in tableData) {
       if (int.tryParse(tbl[1]) == null) continue;
