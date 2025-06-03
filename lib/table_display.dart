@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 
 const kScale = 1.0;
 
+const kEightSeatsCircle = false;
+
 const kWidth = 1800 * kScale;
 const kHeight = 2500 * kScale;
 const kTextBoxSize = 50 * kScale;
@@ -147,7 +149,7 @@ class _TableWidgetState extends State<TableWidget> {
             return;
           },
           builder: (context, candidates, rejected) {
-            if (widget.table.seats == 8) {
+            if (widget.table.seats == 8 && kEightSeatsCircle) {
               return Column(
                 children: [
                   Row(
@@ -248,7 +250,7 @@ class ActualTableBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final halfSeats = (table.seats == 8) ? 1 : (table.seats / 2).round();
+    final halfSeats = (table.seats == 8 && kEightSeatsCircle) ? 1 : (table.seats / 2).round();
     final widget = SizedBox(
       width: kTextBoxSize * (!table.rotated ? halfSeats : 1),
       height: kTextBoxSize * (table.rotated ? halfSeats : 1),

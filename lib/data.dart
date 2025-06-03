@@ -35,9 +35,11 @@ class BallTable {
   /// x and y between 0 and 1, scaled by multiplying with width and height
   Offset position;
   late Offset stablePosition;
-  final bool rotated;
+  bool get rotated => true;
 
-  BallTable({required this.id, required this.seats, required this.position, required this.rotated}) {
+  BallTable({required this.id, required this.seats, required this.position,
+//    required this.rotated
+  }) {
     stablePosition = position;
   }
 }

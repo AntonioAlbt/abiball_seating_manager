@@ -210,7 +210,7 @@ class MyHomePageState extends State<MyHomePage> {
           id: tbl[0],
           seats: int.parse(tbl[1]),
           position: Offset(double.parse(tbl[2]), double.parse(tbl[3])),
-          rotated: tbl[4].trim() != "" && tbl[4].trim().toLowerCase() != "false"
+          // rotated: tbl[4].trim() != "" && tbl[4].trim().toLowerCase() != "false"
         ),
       );
     }
